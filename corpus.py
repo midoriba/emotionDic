@@ -76,6 +76,27 @@ class Corpus:
         ret['all'].append(tmp)
         self.conversation = ret['all']
 
+
+class word:
+    def __init__(self, token, value=0):
+        self.token = token
+        self.value = value
+        self.score = []
+        self.isvisited = False
+    
+
+def extract(e: word, x: word):
+    return e.value * conjunction(e, x) * reverse(e) * reverse(x)
+
+
+def conjunction(e, x):
+    return 1
+
+
+def reverse(e):
+    return 1
+
+
 if(__name__ == '__main__'):
     for file in sorted(os.listdir('moddata/nucc'))[:1]:
         cls = Corpus(os.path.join('moddata','nucc', file))
