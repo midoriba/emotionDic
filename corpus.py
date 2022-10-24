@@ -78,12 +78,21 @@ class Corpus:
 
 
 class word:
-    def __init__(self, token, value=0):
+    def __init__(self, origin, token = None, value=0):
+        self.origin = origin
         self.token = token
         self.value = value
         self.score = []
         self.isvisited = False
     
+    def add_score(self, s):
+        self.score.append(s)
+        return s
+    
+    def set_value(self, v):
+        self.value = v
+        self.isvisited = True
+        return v
 
 def extract(e: word, x: word):
     return e.value * conjunction(e, x) * reverse(e) * reverse(x)
