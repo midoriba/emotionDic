@@ -34,6 +34,7 @@ class Corpus:
                     comflag = True
                 elif(comflag and (not '：' in line)):
                     self.com += line
+                    continue
                 else:
                     self.conversation_index = index+1
                     return
@@ -78,12 +79,12 @@ class Corpus:
 
 
 class word:
-    def __init__(self, origin, token = None, value=0):
-        self.origin = origin
-        self.token = token
+    def __init__(self, lemma, value=0):
+        self.lemma = lemma
         self.value = value
         self.score = []
         self.isvisited = False
+        self.accesscount = 0
     
     def add_score(self, s):
         self.score.append(s)
@@ -93,6 +94,12 @@ class word:
         self.value = v
         self.isvisited = True
         return v
+
+    def reset_score(self):
+        self.score = []
+
+    def __str__(self):
+        return f'{self.lemma}, {self.value if self.isvisited else "new"}, {self.score}, ({self.accesscount})'
 
 def extract(e: word, x: word):
     return e.value * conjunction(e, x) * reverse(e) * reverse(x)
