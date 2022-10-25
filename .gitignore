@@ -131,3 +131,5 @@ dmypy.json
 # Data files
 data/
 moddata/
+
+.DS_Store
