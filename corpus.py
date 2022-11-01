@@ -3,16 +3,22 @@ import os
 import datetime
 import CaboCha
 
+# TODO: 文節インデックスと単語インデックスを混同しにくくしたい。
+
 class Word:
     reverse_word = []
     def __init__(self, lemma, wordcategory, subwordcategory, isbunsetsuhead = False):
+        # 見出し語
         self.lemma = lemma
+        # 文節の頭に当たる単語であるか
         self.isbunsetsuhead = isbunsetsuhead
+        # 品詞
         self.wordcategory = wordcategory
+        # 品詞の詳細
         self.subwordcategory = subwordcategory
-        #否定語であるか
+        # 否定語であるか
         self.isreverse = self.checkreverseword()
-        #接続詞であるか
+        # 接続詞であるか
         self.isconnector = (self.wordcategory == '接続詞')
 
     def checkreverseword(self):
@@ -27,7 +33,7 @@ class Word:
 class Sentence:
     def __init__(self, text, speaker):
         self.speaker = speaker
-        self.sentence_list = list()
+        self.sentence_word_list = list()
         self.bunsetsu_index_list = list()
         self.bunsetsu_link_list = list()
         self.size = 0
@@ -47,26 +53,24 @@ class Sentence:
             lemma = features[6]
             wordcategory = features[0]
             subwordcategory = features[1]
-            self.sentence_list.append(Word(lemma, wordcategory, subwordcategory, isbunsetsuhead))
+            self.sentence_word_list.append(Word(lemma, wordcategory, subwordcategory, isbunsetsuhead))
             self.size += 1
     
     def search_candidate(self, known_index):
         result = set()
         # 既知 -> 未知の係り
-        for i, b in enumerate(self.bunsetsu_index_list):
-            if(i == known_index):
-                result.add(self.bunsetsu_link_list[i])
+        result.add(self.bunsetsu_link_list[known_index])
         # 未知 -> 既知の係り
         for i, b in enumerate(self.bunsetsu_link_list):
             if(b == known_index):
-                result.add(self.bunsetsu_index_list[i])
+                result.add(i)
         return sorted(list(result))
 
     def info(self):
-        return f'{self.speaker}: ' + '|'.join([str(i) for i in self.sentence_list])
+        return f'{self.speaker}: ' + '|'.join([str(i) for i in self.sentence_word_list])
 
     def __str__(self):
-        return f'{self.speaker}: ' + '|'.join([str(i) for i in self.sentence_list])
+        return f'{self.speaker}: ' + '|'.join([str(i) for i in self.sentence_word_list])
             
 
 # 一つのコーパスファイルを表すクラス
@@ -188,4 +192,6 @@ if(__name__ == '__main__'):
     '''for file in sorted(os.listdir('moddata/nucc'))[:1]:
         cls = Corpus(os.path.join('moddata','nucc', file))
         print(cls.conversation)'''
-    print(Sentence('君はもう走れないよ。', 'a01'))
+    s = Sentence('明日は暑いし湿度も高いので、部活は休みにして早めに帰りましょう。', 'a01')
+    print(s)
+    print(s.search_candidate(1))
