@@ -1,6 +1,73 @@
 import re
 import os
 import datetime
+import CaboCha
+
+class Word:
+    reverse_word = []
+    def __init__(self, lemma, wordcategory, subwordcategory, isbunsetsuhead = False):
+        self.lemma = lemma
+        self.isbunsetsuhead = isbunsetsuhead
+        self.wordcategory = wordcategory
+        self.subwordcategory = subwordcategory
+        #否定語であるか
+        self.isreverse = self.checkreverseword()
+        #接続詞であるか
+        self.isconnector = (self.wordcategory == '接続詞')
+
+    def checkreverseword(self):
+        if(self.wordcategory == '助動詞' and self.lemma in self.reverse_word):
+            return True
+        else:
+            return False
+    
+    def __str__(self):
+        return self.lemma
+
+class Sentence:
+    def __init__(self, text, speaker):
+        self.speaker = speaker
+        self.sentence_list = list()
+        self.bunsetsu_index_list = list()
+        self.bunsetsu_link_list = list()
+        self.size = 0
+        self.bunsetsu_size = 0
+        c = CaboCha.Parser()
+        tree = c.parse(text)
+        for index in range(tree.size()):
+            token = tree.token(index)
+            #分節の頭の単語の場合
+            isbunsetsuhead = False
+            if(token.chunk is not None):
+                self.bunsetsu_link_list.append(token.chunk.link)
+                self.bunsetsu_index_list.append(index)
+                isbunsetsuhead = True
+                self.bunsetsu_size += 1
+            features = token.feature.split(',')
+            lemma = features[6]
+            wordcategory = features[0]
+            subwordcategory = features[1]
+            self.sentence_list.append(Word(lemma, wordcategory, subwordcategory, isbunsetsuhead))
+            self.size += 1
+    
+    def search_candidate(self, known_index):
+        result = set()
+        # 既知 -> 未知の係り
+        for i, b in enumerate(self.bunsetsu_index_list):
+            if(i == known_index):
+                result.add(self.bunsetsu_link_list[i])
+        # 未知 -> 既知の係り
+        for i, b in enumerate(self.bunsetsu_link_list):
+            if(b == known_index):
+                result.add(self.bunsetsu_index_list[i])
+        return sorted(list(result))
+
+    def info(self):
+        return f'{self.speaker}: ' + '|'.join([str(i) for i in self.sentence_list])
+
+    def __str__(self):
+        return f'{self.speaker}: ' + '|'.join([str(i) for i in self.sentence_list])
+            
 
 # 一つのコーパスファイルを表すクラス
 class Corpus:
@@ -62,7 +129,7 @@ class Corpus:
                 if(tmp['content'] != ''):
                     tmp['content'] = re.sub('（.+?）', '', tmp['content'])
                     tmp['content'] = re.sub('＜.+?＞', '', tmp['content'])
-                    ret['all'].append(tmp)
+                    ret['all'].append(Sentence(tmp['content'], tmp['speaker']))
                     tmp = {'speaker':'', 'content':''}
                 splited_i = i.split('：')
                 if(len(splited_i) != 2):
@@ -74,17 +141,18 @@ class Corpus:
 
         tmp['content'] = re.sub('（.+?）', '', tmp['content'])
         tmp['content'] = re.sub('＜.+?＞', '', tmp['content'])
-        ret['all'].append(tmp)
+        ret['all'].append(Sentence(tmp['content'], tmp['speaker']))
         self.conversation = ret['all']
 
 
-class word:
+class WordDicElement:
     def __init__(self, lemma, value=0):
         self.lemma = lemma
         self.value = value
         self.score = []
         self.isvisited = False
         self.accesscount = 0
+        self.isactive = True
     
     def add_score(self, s):
         self.score.append(s)
@@ -98,10 +166,13 @@ class word:
     def reset_score(self):
         self.score = []
 
+    def deactivate(self):
+        self.isactive = False
+
     def __str__(self):
         return f'{self.lemma}, {self.value if self.isvisited else "new"}, {self.score}, ({self.accesscount})'
 
-def extract(e: word, x: word):
+def extract(e: WordDicElement, x: WordDicElement):
     return e.value * conjunction(e, x) * reverse(e) * reverse(x)
 
 
@@ -114,6 +185,7 @@ def reverse(e):
 
 
 if(__name__ == '__main__'):
-    for file in sorted(os.listdir('moddata/nucc'))[:1]:
+    '''for file in sorted(os.listdir('moddata/nucc'))[:1]:
         cls = Corpus(os.path.join('moddata','nucc', file))
-        print(cls.conversation)
+        print(cls.conversation)'''
+    print(Sentence('君はもう走れないよ。', 'a01'))
