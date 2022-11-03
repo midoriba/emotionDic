@@ -6,20 +6,20 @@ import CaboCha
 # TODO: 文節インデックスと単語インデックスを混同しにくくしたい。
 
 class Word:
-    reverse_word = []
-    def __init__(self, lemma, wordcategory, subwordcategory, isbunsetsuhead = False):
+    reverse_word = ['ない', 'ぬ']
+    def __init__(self, lemma: str, wordcategory: str, subwordcategory:str , isbunsetsuhead:bool = False):
         # 見出し語
-        self.lemma = lemma
+        self.lemma: str = lemma
         # 文節の頭に当たる単語であるか
-        self.isbunsetsuhead = isbunsetsuhead
+        self.isbunsetsuhead: bool = isbunsetsuhead
         # 品詞
-        self.wordcategory = wordcategory
+        self.wordcategory: str = wordcategory
         # 品詞の詳細
-        self.subwordcategory = subwordcategory
-        # 否定語であるか
-        self.isreverse = self.checkreverseword()
+        self.subwordcategory: str = subwordcategory
+        # 否定語を同じ文節に含むか
+        self.isreverse: bool = self.checkreverseword()
         # 接続詞であるか
-        self.isconnector = (self.wordcategory == '接続詞')
+        self.isconnector: bool = (self.wordcategory == '接続詞')
 
     def checkreverseword(self):
         if(self.wordcategory == '助動詞' and self.lemma in self.reverse_word):
@@ -27,19 +27,25 @@ class Word:
         else:
             return False
     
+    def setreverse(self):
+        self.isreverse = True
+
     def __str__(self):
         return self.lemma
 
 class Sentence:
     def __init__(self, text, speaker):
+        self.text = text
         self.speaker = speaker
-        self.sentence_word_list = list()
-        self.bunsetsu_index_list = list()
-        self.bunsetsu_link_list = list()
-        self.size = 0
-        self.bunsetsu_size = 0
+        self.sentence_word_list: list[Word] = list()
+        self.bunsetsu_index_list: list[int] = list()
+        self.bunsetsu_link_list: list[int] = list()
+        self.size: int = 0
+        self.bunsetsu_size: int = 0
         c = CaboCha.Parser()
         tree = c.parse(text)
+        # 否定語を含む文節の分節番号のリスト。
+        reversebunsetsu = []
         for index in range(tree.size()):
             token = tree.token(index)
             #分節の頭の単語の場合
@@ -54,20 +60,33 @@ class Sentence:
             wordcategory = features[0]
             subwordcategory = features[1]
             self.sentence_word_list.append(Word(lemma, wordcategory, subwordcategory, isbunsetsuhead))
+            if(self.sentence_word_list[index].isreverse):
+                reversebunsetsu.append(self.bunsetsu_size-1)
             self.size += 1
+        #print(reversebunsetsu, [])
+        for index in reversebunsetsu:
+            start_index = self.bunsetsu_index_list[index]
+            if(index + 1 >= len(self.bunsetsu_index_list)):
+                end_index = self.size
+            else:
+                end_index = self.bunsetsu_index_list[index+1]
+            #print(start_index, end_index)
+            for sindex in range(start_index, end_index):
+                self.sentence_word_list[sindex].setreverse()
     
     def search_candidate(self, known_index):
         result = set()
         # 既知 -> 未知の係り
-        result.add(self.bunsetsu_link_list[known_index])
+        if(known_index != self.size):
+            result.add(self.bunsetsu_link_list[known_index])
         # 未知 -> 既知の係り
-        for i, b in enumerate(self.bunsetsu_link_list):
+        for i, b in enumerate(self.bunsetsu_link_list[:-1]):
             if(b == known_index):
                 result.add(i)
         return sorted(list(result))
 
     def info(self):
-        return f'{self.speaker}: ' + '|'.join([str(i) for i in self.sentence_word_list])
+        return f'{self.speaker}: ' + '|'.join([str(i)+('r' if i.isreverse else '') for i in self.sentence_word_list])
 
     def __str__(self):
         return f'{self.speaker}: ' + '|'.join([str(i) for i in self.sentence_word_list])
@@ -125,28 +144,30 @@ class Corpus:
     def read_conversation(self):
         if(self.conversation_index == 0):
             return
-        ret = {'all':[]}
-        tmp = {'speaker':'', 'content':''}
+        ret = []
+        speaker = ''
+        spokencontent = ''
         cnt = 0
         for i in self.txt[self.conversation_index:]:
             if('：' in i):
-                if(tmp['content'] != ''):
-                    tmp['content'] = re.sub('（.+?）', '', tmp['content'])
-                    tmp['content'] = re.sub('＜.+?＞', '', tmp['content'])
-                    ret['all'].append(Sentence(tmp['content'], tmp['speaker']))
-                    tmp = {'speaker':'', 'content':''}
+                if(spokencontent != ''):
+                    spokencontent = re.sub('（.+?）', '', spokencontent)
+                    spokencontent = re.sub('＜.+?＞', '', spokencontent)
+                    ret.append(Sentence(spokencontent, speaker))
+                    speaker = ''
+                    spokencontent = ''
                 splited_i = i.split('：')
                 if(len(splited_i) != 2):
                     print(f'確認してください: "{i}"')
                 else:
-                    tmp['speaker'], tmp['content'] = splited_i
+                    speaker, spokencontent = splited_i
             elif(i != '＠ＥＮＤ'):
-                tmp['content'] += i
+                spokencontent += i
 
-        tmp['content'] = re.sub('（.+?）', '', tmp['content'])
-        tmp['content'] = re.sub('＜.+?＞', '', tmp['content'])
-        ret['all'].append(Sentence(tmp['content'], tmp['speaker']))
-        self.conversation = ret['all']
+        spokencontent = re.sub('（.+?）', '', spokencontent)
+        spokencontent = re.sub('＜.+?＞', '', spokencontent)
+        ret.append(Sentence(spokencontent, speaker))
+        self.conversation = ret
 
 
 class WordDicElement:
@@ -176,22 +197,24 @@ class WordDicElement:
     def __str__(self):
         return f'{self.lemma}, {self.value if self.isvisited else "new"}, {self.score}, ({self.accesscount})'
 
-def extract(e: WordDicElement, x: WordDicElement):
-    return e.value * conjunction(e, x) * reverse(e) * reverse(x)
+def extract(e: Word, x: Word, dic: dict):
+    #print(e.lemma,'->', x.lemma)
+    return dic[e.lemma].value * conjunction(e, x) * reverse(e) * reverse(x)
 
 
 def conjunction(e, x):
     return 1
 
-
-def reverse(e):
-    return 1
-
+def reverse(e: Word):
+    if(e.isreverse):
+        return -1
+    else:
+        return 1
 
 if(__name__ == '__main__'):
     '''for file in sorted(os.listdir('moddata/nucc'))[:1]:
         cls = Corpus(os.path.join('moddata','nucc', file))
         print(cls.conversation)'''
-    s = Sentence('明日は暑いし湿度も高いので、部活は休みにして早めに帰りましょう。', 'a01')
-    print(s)
+    s = Sentence('見かけはきれいだったわ。', 'a01')
     print(s.search_candidate(1))
+    #print(s.search_candidate(1))
