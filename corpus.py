@@ -175,9 +175,9 @@ class WordDicElement:
         self.lemma = lemma
         self.value = value
         self.score = []
-        self.isvisited = False
         self.accesscount = 0
-        self.isactive = True
+        self.isactive = False
+        self.isdeleted = False
     
     def add_score(self, s):
         self.score.append(s)
@@ -185,7 +185,7 @@ class WordDicElement:
     
     def set_value(self, v):
         self.value = v
-        self.isvisited = True
+        self.isactive = True
         return v
 
     def reset_score(self):
@@ -194,8 +194,11 @@ class WordDicElement:
     def deactivate(self):
         self.isactive = False
 
+    def delete(self):
+        self.isdeleted = True
+
     def __str__(self):
-        return f'{self.lemma}, {self.value if self.isvisited else "new"}, {self.score}, ({self.accesscount})'
+        return f'{self.lemma}, {self.value if self.isactive else "new"}, {self.score}, ({self.accesscount})'
 
 def extract(e: Word, x: Word, dic: dict):
     #print(e.lemma,'->', x.lemma)
