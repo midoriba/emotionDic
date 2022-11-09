@@ -171,9 +171,10 @@ class Corpus:
 
 
 class WordDicElement:
-    def __init__(self, lemma, value=0):
+    def __init__(self, lemma, value_x=0, value_y=0):
         self.lemma = lemma
-        self.value = value
+        self.value_x = value_x
+        self.value_y = value_y
         self.score = []
         self.accesscount = 0
         self.isactive = False
@@ -183,10 +184,10 @@ class WordDicElement:
         self.score.append(s)
         return s
     
-    def set_value(self, v):
-        self.value = v
+    def set_value(self, x, y):
+        self.value_x = x
+        self.value_y = y
         self.isactive = True
-        return v
 
     def reset_score(self):
         self.score = []
@@ -198,11 +199,16 @@ class WordDicElement:
         self.isdeleted = True
 
     def __str__(self):
-        return f'{self.lemma}, {self.value if self.isactive else "new"}, {self.score}, ({self.accesscount})'
+        position = f"[{self.value_x}, {self.value_y}]" if self.isactive else 'null'
+        r = (self.value_x**2 + self.value_y**2)**0.5
+        return f'{{"lemma":"{self.lemma}","r":{r},"position":{position},"score":{self.score},"accesscount":{self.accesscount}}}'
 
 def extract(e: Word, x: Word, dic: dict):
     #print(e.lemma,'->', x.lemma)
-    return dic[e.lemma].value * conjunction(e, x) * reverse(e) * reverse(x)
+    return [
+        dic[e.lemma].value_x * conjunction(e, x) * reverse(e) * reverse(x),
+        dic[e.lemma].value_y * conjunction(e, x) * reverse(e) * reverse(x)
+        ]
 
 
 def conjunction(e, x):
