@@ -205,7 +205,11 @@ class WordDicElement:
     def set_value(self, x, y):
         self.value_x = x
         self.value_y = y
+<<<<<<< HEAD
         self.isregistered = True
+=======
+        self.isactive = True
+>>>>>>> main
 
     def reset_score(self):
         self.score = []
@@ -232,10 +236,16 @@ class WordDicElement:
             self.delete()
 
     def __str__(self):
+<<<<<<< HEAD
         position = f"[{self.value_x}, {self.value_y}]" if self.isregistered else 'null'
         r = (self.value_x**2 + self.value_y**2)**0.5
         return f'{{"lemma":"{self.lemma}","r":{r},"position":{position},"score":{self.score},"accesscount":{self.accesscount},"active":{int(self.isactive)}}}'
 
+=======
+        position = f"[{self.value_x}, {self.value_y}]" if self.isactive else 'null'
+        r = (self.value_x**2 + self.value_y**2)**0.5
+        return f'{{"lemma":"{self.lemma}","r":{r},"position":{position},"score":{self.score},"accesscount":{self.accesscount}}}'
+>>>>>>> main
 
 def extract(e: Word, x: Word, dic: dict):
     #print(e.lemma,'->', x.lemma)
