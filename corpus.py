@@ -5,6 +5,23 @@ import CaboCha
 
 # TODO: 文節インデックスと単語インデックスを混同しにくくしたい。
 
+import math
+
+
+def argtoxy(arg, r=1.):
+    ret = [
+        r * math.cos(arg * math.pi / 180),
+        r * math.sin(arg * math.pi / 180)
+    ]   
+    return ret 
+
+def xytoarg(x, y):
+    ret = [
+        math.sqrt(x*x + y*y),
+        180 * math.atan2(y, x)/ math.pi
+    ]
+    return ret # 度数法で返すs
+    
 class Word:
     reverse_word = ['ない', 'ぬ']
     def __init__(self, lemma: str, wordcategory: str, subwordcategory:str , isbunsetsuhead:bool = False):
@@ -171,38 +188,61 @@ class Corpus:
 
 
 class WordDicElement:
-    def __init__(self, lemma, value=0):
+    def __init__(self, lemma, value_x=0, value_y=0):
         self.lemma = lemma
-        self.value = value
+        self.value_x = value_x
+        self.value_y = value_y
         self.score = []
         self.accesscount = 0
-        self.isactive = False
-        self.isdeleted = False
+        self.isactive = False # 他の単語のスコアに影響を与えるか
+        self.isdeleted = False # 論理削除フラグ
+        self.isregistered = False # 感情値が登録されたか
     
     def add_score(self, s):
         self.score.append(s)
         return s
     
-    def set_value(self, v):
-        self.value = v
-        self.isactive = True
-        return v
+    def set_value(self, x, y):
+        self.value_x = x
+        self.value_y = y
+        self.isregistered = True
 
     def reset_score(self):
         self.score = []
+
+    def activate(self):
+        self.isactive = True
 
     def deactivate(self):
         self.isactive = False
 
     def delete(self):
+        self.isactive = False
         self.isdeleted = True
 
+    def register(self):
+        self.isregistered = True
+
+    def activatecheck(self, learntime):
+        r, arg = xytoarg(self.value_x, self.value_y)
+        #print(r, arg, self.accesscount, r > 0.8, self.accesscount > 100, r > 0.8 and self.accesscount > 100)
+        if(r > 0.6 and self.accesscount > 10 * learntime):
+            self.activate()
+        elif(r <= 0.6):
+            self.delete()
+
     def __str__(self):
-        return f'{self.lemma}, {self.value if self.isactive else "new"}, {self.score}, ({self.accesscount})'
+        position = f"[{self.value_x}, {self.value_y}]" if self.isregistered else 'null'
+        r = (self.value_x**2 + self.value_y**2)**0.5
+        return f'{{"lemma":"{self.lemma}","r":{r},"position":{position},"score":{self.score},"accesscount":{self.accesscount},"active":{int(self.isactive)}}}'
+
 
 def extract(e: Word, x: Word, dic: dict):
     #print(e.lemma,'->', x.lemma)
-    return dic[e.lemma].value * conjunction(e, x) * reverse(e) * reverse(x)
+    return [
+        dic[e.lemma].value_x * conjunction(e, x) * reverse(e) * reverse(x),
+        dic[e.lemma].value_y * conjunction(e, x) * reverse(e) * reverse(x)
+        ]
 
 
 def conjunction(e, x):
@@ -214,10 +254,68 @@ def reverse(e: Word):
     else:
         return 1
 
+def calc_score(cp, argdic):
+    dic = argdic.copy()
+    linecount = 0
+    for line in cp.conversation:
+        kk = []
+        linecount += 1
+        for bindex, b in enumerate(line.bunsetsu_index_list):
+            bunsetsu_head = line.sentence_word_list[b]
+            try:
+                dic[bunsetsu_head.lemma].accesscount += 1
+                if(dic[bunsetsu_head.lemma].isactive):
+                    candidates = [line.bunsetsu_index_list[i] for i in line.search_candidate(bindex)]
+                    for candidate_index in candidates:
+                        candidate = line.sentence_word_list[candidate_index]
+                        kk.append([bunsetsu_head.lemma, candidate.lemma])
+                        try:
+                            dic[candidate.lemma].add_score(extract(bunsetsu_head, candidate, dic))
+                        except KeyError:
+                            newword = WordDicElement(candidate.lemma)
+                            newword.add_score(extract(bunsetsu_head, candidate, dic))
+                            dic[candidate.lemma] = newword
+            except KeyError:
+                continue
+        if(len(kk) > 0):
+            with open('kkout.txt', encoding='utf-8', mode='a') as f:
+                f.write(f"[{line.text}]\n")
+                f.write('\n'.join([f'{i[0]}->{i[1]}' for i in kk])+'\n')
+    return dic
+
+
+def calc_value(argdic: dict[WordDicElement], learntime: int, alpha: float=0.5, ):
+    dic = argdic.copy()
+    for key in dic.keys():
+        elem = dic[key]
+        if(elem.accesscount > learntime*1000):
+            pass
+        elif(len(elem.score) < 1):
+            continue
+        elif(elem.isdeleted):
+            continue
+        elif(elem.isregistered):
+            xscore = [i[0] for i in elem.score]
+            yscore = [i[1] for i in elem.score]
+            newxvalue = sum(xscore)/len(elem.score) * alpha + elem.value_x * (1-alpha)
+            newyvalue = sum(yscore)/len(elem.score) * alpha + elem.value_y * (1-alpha)
+            dic[key].set_value(newxvalue, newyvalue)
+            dic[key].activatecheck(learntime)
+        else:
+            xscore = [i[0] for i in elem.score]
+            yscore = [i[1] for i in elem.score]
+            newxvalue = sum(xscore)/len(elem.score)
+            newyvalue = sum(yscore)/len(elem.score)
+            dic[key].set_value(newxvalue, newyvalue)
+            dic[key].activatecheck(learntime)
+        dic[key].reset_score()
+            
+    return dic
+
+
 if(__name__ == '__main__'):
     '''for file in sorted(os.listdir('moddata/nucc'))[:1]:
         cls = Corpus(os.path.join('moddata','nucc', file))
         print(cls.conversation)'''
     s = Sentence('見かけはきれいだったわ。', 'a01')
     print(s.search_candidate(1))
-    #print(s.search_candidate(1))
