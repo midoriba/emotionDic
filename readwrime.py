@@ -3,55 +3,13 @@ import os
 import datetime
 import CaboCha
 
-# TODO: 文節インデックスと単語インデックスを混同しにくくしたい。
+# wrime用
 
 import math
 
 
-def argtoxy(arg, r=1.):
-    ret = [
-        r * math.cos(arg * math.pi / 180),
-        r * math.sin(arg * math.pi / 180)
-    ]   
-    return ret 
-
-def xytoarg(x, y):
-    ret = [
-        math.sqrt(x*x + y*y),
-        180 * math.atan2(y, x)/ math.pi
-    ]
-    return ret # 度数法で返すs
-    
-class Word:
-    reverse_word = ['ない', 'ぬ']
-    def __init__(self, lemma: str, wordcategory: str, subwordcategory:str , isbunsetsuhead:bool = False):
-        # 見出し語
-        self.lemma: str = lemma
-        # 文節の頭に当たる単語であるか
-        self.isbunsetsuhead: bool = isbunsetsuhead
-        # 品詞
-        self.wordcategory: str = wordcategory
-        # 品詞の詳細
-        self.subwordcategory: str = subwordcategory
-        # 否定語を同じ文節に含むか
-        self.isreverse: bool = self.checkreverseword()
-        # 接続詞であるか
-        self.isconnector: bool = (self.wordcategory == '接続詞')
-
-    def checkreverseword(self):
-        if(self.wordcategory == '助動詞' and self.lemma in self.reverse_word):
-            return True
-        else:
-            return False
-    
-    def setreverse(self):
-        self.isreverse = True
-
-    def __str__(self):
-        return self.lemma
-
-class Sentence:
-    def __init__(self, text, speaker):
+class PostText:
+    def __init__(self, text, speaker, version=0, joy=0, sadness=0, anticipation=0, surprise=0, anger=0, fear=0, disgust=0, trust=0, sentiment=0):
         self.text = text
         self.speaker = speaker
         self.sentence_word_list: list[Word] = list()
@@ -59,6 +17,8 @@ class Sentence:
         self.bunsetsu_link_list: list[int] = list()
         self.size: int = 0
         self.bunsetsu_size: int = 0
+        self.emot_annotation: dict[int] = {'Joy':joy,'Sadness':sadness,'Anticipation':anticipation,'Surprise':surprise,'Anger':anger,'Fear':fear,'Disgust':disgust,'Trust':trust,'Sentiment':sentiment}
+        self.version = version # コーパスのバージョン
         c = CaboCha.Parser()
         tree = c.parse(text)
         # 否定語を含む文節の分節番号のリスト。
@@ -183,7 +143,7 @@ class Corpus:
 
         spokencontent = re.sub('（.+?）', '', spokencontent)
         spokencontent = re.sub('＜.+?＞', '', spokencontent)
-        ret.append(Sentence(spokencontent, speaker))
+        ret.append(PostText(spokencontent, speaker))
         self.conversation = ret
 
 
@@ -317,5 +277,5 @@ if(__name__ == '__main__'):
     '''for file in sorted(os.listdir('moddata/nucc'))[:1]:
         cls = Corpus(os.path.join('moddata','nucc', file))
         print(cls.conversation)'''
-    s = Sentence('見かけはきれいだったわ。', 'a01')
+    #s = Sentence('見かけはきれいだったわ。', 'a01')
     print(s.search_candidate(1))
