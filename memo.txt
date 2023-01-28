@@ -1,0 +1,23 @@
+#v1
+e = {
+    "Joy":50,
+    "Sadness":-160,
+    "Anticipation":60,
+    "Surprise":90,
+    "Anger":140,
+    "Fear":110,
+    "Disgust":180,
+    "Trust":-40
+}
+
+#v2
+e = {
+    "Joy":0,
+    "Sadness":240,
+    "Anticipation":60,
+    "Surprise":90,
+    "Anger":140,
+    "Fear":110,
+    "Disgust":180,
+    "Trust":-70
+}
