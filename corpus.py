@@ -6,6 +6,7 @@ import CaboCha
 # TODO: 文節インデックスと単語インデックスを混同しにくくしたい。
 
 import math
+import numpy as np
 
 
 def argtoxy(arg, r=1.):
@@ -193,6 +194,8 @@ class WordDicElement:
         self.value_x = value_x
         self.value_y = value_y
         self.score = []
+        self.variance = 0
+        self.covariance = 0
         self.accesscount = 0
         self.isactive = False # 他の単語のスコアに影響を与えるか
         self.isdeleted = False # 論理削除フラグ
@@ -209,6 +212,19 @@ class WordDicElement:
 
     def reset_score(self):
         self.score = []
+
+    def calc_variance(self):
+        variance = [
+            np.var([i[0] for i in self.score]),
+            np.var([i[1] for i in self.score])
+        ]
+        self.variance = variance
+    
+    def calc_covariance(self):
+        average_x = sum([i[0] for i in self.score])/len(self.score)
+        average_y = sum([i[1] for i in self.score])/len(self.score)
+        cov = sum([(i[0] - average_x)*(i[1] - average_y) for i in self.score])/len(self.score)
+        self.covariance = cov
 
     def activate(self):
         self.isactive = True
