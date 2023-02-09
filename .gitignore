@@ -140,3 +140,5 @@ wrimedic/
 near/
 near_neologd/
 display.csv
+display/
+frequency.json

@@ -7,7 +7,10 @@ import CaboCha
 
 import math
 import numpy as np
+import json
 
+with open('moddata/frequency.json', encoding='utf-8') as f:
+    frequency_dic = json.loads(f.read())
 
 def argtoxy(arg, r=1.):
     ret = [
@@ -197,6 +200,11 @@ class WordDicElement:
         self.variance = 0
         self.covariance = 0
         self.accesscount = 0
+        try:
+            self.frequency = frequency_dic[lemma]
+        except KeyError:
+            print(lemma, 'frequency not found')
+            self.frequency = 0
         self.isactive = False # 他の単語のスコアに影響を与えるか
         self.isdeleted = False # 論理削除フラグ
         self.isregistered = False # 感情値が登録されたか
@@ -242,7 +250,7 @@ class WordDicElement:
     def activatecheck(self, learntime):
         r, arg = xytoarg(self.value_x, self.value_y)
         #print(r, arg, self.accesscount, r > 0.8, self.accesscount > 100, r > 0.8 and self.accesscount > 100)
-        if(r > 0.6 and self.accesscount > 10 * learntime):
+        if(r > 0.6 and self.frequency > 5):
             self.activate()
         elif(r <= 0.6):
             self.delete()
