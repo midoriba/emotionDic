@@ -1,4 +1,5 @@
 import traceback
+import math
 
 class wordEmotionDictonaryElement:
     def __init__(self, lemma, update_rate = 0.5):
@@ -6,6 +7,8 @@ class wordEmotionDictonaryElement:
         self.update_rate = update_rate
         self.x = 0
         self.y = 0
+        self.r = 0
+        self.degrees = 0
         self.x_score_list = list()
         self.y_score_list = list()
         self.value_set_times = 0
@@ -20,6 +23,8 @@ class wordEmotionDictonaryElement:
         self.value_set_times += 1
         self.x_score_list.clear()
         self.y_score_list.clear()
+        self.r = math.sqrt(self.x**2 + self.y**2)
+        self.degrees = math.degrees(math.atan2(self.y,self.x))
     def get_scores(self):
         return [(x, y) for x, y in zip(self.x_score_list, self.y_score_list)]
     def get_value(self):
@@ -29,9 +34,11 @@ class wordEmotionDictonaryElement:
 
 
 class wordEmotionDictionary:
-    def __init__(self, update_rate=0.5):
+    def __init__(self, update_rate=0.5, min_r=0.6):
         self.dictionary = dict()
         self.update_rate = update_rate
+        self.min_r = min_r
+        self.learn_time = 0
     def __getitem__(self, key):
         if(key in self.dictionary):
             return self.dictionary[key]
@@ -47,4 +54,9 @@ class wordEmotionDictionary:
             return None
         else:
             raise KeyError
+    def calc_scores(self):
+        for key in self.dictionary:
+            self.dictionary[key].set_value()
+    
+            
 
