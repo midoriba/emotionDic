@@ -12,9 +12,10 @@ def read_sentence(text):
     new_sentence.bunsetsu_head.clear()
     new_sentence.dependency.clear()
     new_sentence.word_category.clear()
-
     new_sentence.text = text
+    new_sentence.bunsetsu_size = 0
     tree = parser.parse(text)
+    new_sentence.length = tree.size()
     for index in range(tree.size()):
         token = tree.token(index)
         feature = token.feature.split(',')
@@ -23,6 +24,7 @@ def read_sentence(text):
         new_sentence.word_category.append(feature[0])
         new_sentence.sub_word_category.append(feature[1])
         if(token.chunk is not None):
+            new_sentence.bunsetsu_size += 1
             new_sentence.bunsetsu_head.append(index)
             new_sentence.dependency.append(token.chunk.link)
     return new_sentence
@@ -35,6 +37,7 @@ def read_json(json_text):
     new_sentence.raw_words = dic['raw_words']
     new_sentence.base_form_words = dic['base_form_words']
     new_sentence.length = dic['length']
+    new_sentence.bunsetsu_size = dic['bunsetsu_size']
     new_sentence.bunsetsu_head = dic['bunsetsu_head']
     new_sentence.dependency = dic['dependency']
     new_sentence.word_category = dic['word_category']
@@ -47,6 +50,7 @@ class Sentence:
         self.raw_words = list()
         self.base_form_words = list()
         self.length = 0
+        self.bunsetsu_size = 0
         self.bunsetsu_head = list()
         self.dependency = list()
         self.word_category = list()
