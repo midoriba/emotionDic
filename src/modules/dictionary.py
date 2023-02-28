@@ -83,6 +83,7 @@ class wordEmotionDictionary:
         self.update_rate = update_rate
         self.min_r = min_r
         self.learn_time = 0
+        self.size = 0
         with open(project_dir.joinpath('conf','connectorword.json'), encoding='utf-8', mode='r') as f:
             self.connector_words_dictionary = json.load(f)
     def __getitem__(self, keytuple):
@@ -91,7 +92,8 @@ class wordEmotionDictionary:
             return self.dictionary[key]
         else:
             self.dictionary[key] = wordEmotionDictonaryElement(keytuple[0], keytuple[1], update_rate=self.update_rate)
-            print(key)
+            #print(key)
+            self.size += 1
             return self.dictionary[key]
     def clear(self):
         self.dictionary.clear()
@@ -129,13 +131,13 @@ class wordEmotionDictionary:
                     target_word = s.base_form_words[target_word_index]
                     self[target_word].add_score(influencer_word.x, influencer_word.y)
                     #print(f'{target_word_index}({b_target_word_index}) <- {influencer_index}({b_influencer_index})')'''
-    def search_connection(self, s: Sentence):
+    def read_sentence(self, s: Sentence):
         influencer_words_index_list = [] # 影響を与えられる単語のリストインデックス
         # 影響を与えられる単語を探す
         for index, word in enumerate(s.base_form_words):
             if(self[word, s.word_category[index]].can_influence):
                 influencer_words_index_list.append(index)
-        print('inf', influencer_words_index_list)
+        #print('inf', influencer_words_index_list)
         # 影響を与えられる単語から、スコアを与える
         for influencer_word_index in influencer_words_index_list:
             influencer_word = s.base_form_words[influencer_word_index]
@@ -148,7 +150,7 @@ class wordEmotionDictionary:
                 target_word = s.base_form_words[target_index]
                 self[target_word, s.word_category[target_index]].add_score(influencer_word_element.x, influencer_word_element.y)
                 target_index += 1
-                print(f'{influencer_word} -> {target_word}')
+                #print(f'{influencer_word} -> {target_word}')
             # 係られ
             for bunsetsu_index, bunsetsu_dependency in enumerate(s.dependency[:-1]):
                 if(bunsetsu_dependency == influencer_word_bunsetsu_index):
@@ -157,7 +159,7 @@ class wordEmotionDictionary:
                         target_word = s.base_form_words[target_index]
                         self[target_word, s.word_category[target_index]].add_score(influencer_word_element.x, influencer_word_element.y)
                         target_index += 1
-                        print(f'{target_word} <- {influencer_word}')
+                        #print(f'{target_word} <- {influencer_word}')
 
 
     def describe(self):
