@@ -2,6 +2,8 @@ import math
 from sentence import Sentence, read_sentence
 import json
 from pathlib import Path
+import datetime
+import os
 
 
 project_dir = Path(__file__).parent.parent.parent
@@ -29,11 +31,12 @@ class wordEmotionDictonaryElement:
         self.x = x
         self.y = y
         self.value_set_times += 1
-        self.x_score_list.clear()
-        self.y_score_list.clear()
         self.r = math.sqrt(self.x**2 + self.y**2)
         self.degrees = math.degrees(math.atan2(self.y,self.x))
         self.is_empty = False
+    def clear_scores(self):
+        self.x_score_list.clear()
+        self.y_score_list.clear()
     def init_value(self, x, y):
         self.set_value(x, y)
         self.value_set_times = 0
@@ -78,14 +81,25 @@ class wordEmotionDictonaryElement:
 
 
 class wordEmotionDictionary:
-    def __init__(self, update_rate=0.5, min_r=0.6):
+    def __init__(self, seed, update_rate=0.5, min_r=0.6, caption=''):
         self.dictionary = dict()
         self.update_rate = update_rate
         self.min_r = min_r
         self.learn_time = 0
         self.size = 0
+        self.seed = seed
+        self.caption = caption
         with open(project_dir.joinpath('conf','connectorword.json'), encoding='utf-8', mode='r') as f:
             self.connector_words_dictionary = json.load(f)
+        # 種表現
+        with open(f'{project_dir}/conf/seeds/{seed}', encoding='utf-8', mode='r') as f:
+            seed_dic = json.load(f)
+            for word_category, words in seed_dic.items():
+                for lemma, degree in words.items():
+                    rad = math.radians(degree)
+                    x = math.cos(rad)
+                    y = math.sin(rad)
+                    self[lemma, word_category].init_value(x, y)
     def __getitem__(self, keytuple):
         key = f'{keytuple[0]}（{keytuple[1]}）'
         if(key in self.dictionary):
@@ -160,10 +174,34 @@ class wordEmotionDictionary:
                         self[target_word, s.word_category[target_index]].add_score(influencer_word_element.x, influencer_word_element.y)
                         target_index += 1
                         #print(f'{target_word} <- {influencer_word}')
-
-
+    def learn(self, data):
+        for s in data:
+            self.read_sentence(s)
+        self.calc_values
+        self.learn_time += 1
+        return 0
     def describe(self):
         return [i for _, i in self.dictionary.items()]
+    def to_file(self):
+        dt_now = datetime.datetime.now()
+        dir_name = 'output_' + dt_now.strftime('%Y%m%d%H%M')
+        os.mkdir(f'{project_dir}/output/emodict/{dir_name}')
+        with open(f'{project_dir}/output/emodict/{dir_name}/output.csv', encoding='utf-8', mode='w') as f:
+            out = 'lemma,word_category,x,y,r,degree,is_empty\n'
+            for i, item in self.dictionary.items():
+                degree = math.degrees(math.atan2(item.y,item.x))
+                out += f'{item.lemma},{item.word_category},{item.x},{item.y},{item.r},{degree},{item.is_empty}\n'
+            f.write(out)   
+        with open(f'{project_dir}/output/emodict/{dir_name}/meta.json', encoding='utf-8', mode='w') as f:
+            meta_dic = {
+                "update_rate":self.update_rate,
+                "min_r":self.min_r,
+                "learn_time":self.learn_time,
+                "size":self.size,
+                "seed":self.seed,
+                "caption":self.caption
+            }
+            json.dump(meta_dic, f)
 
 if(__name__ == '__main__'):
     print(project_dir)
