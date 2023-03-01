@@ -7,7 +7,8 @@ import os
 
 
 project_dir = Path(__file__).parent.parent.parent
-
+with open(f'{project_dir}/conf/word_category_allowed.json', encoding='utf-8', mode='r') as f:
+    word_category_allowed = json.load(f)['可']
 
 class wordEmotionDictonaryElement:
     def __init__(self, lemma, word_category, update_rate = 0.5):
@@ -31,6 +32,7 @@ class wordEmotionDictonaryElement:
         self.x = x
         self.y = y
         self.value_set_times += 1
+        self.clear_scores()
         self.r = math.sqrt(self.x**2 + self.y**2)
         self.degrees = math.degrees(math.atan2(self.y,self.x))
         self.is_empty = False
@@ -63,7 +65,7 @@ class wordEmotionDictonaryElement:
     def check(self, min_r):
         if(self.never_influence):
             return 0
-        elif(not self.can_influence and self.r >= min_r):
+        elif(not self.can_influence and self.r >= min_r and self.word_category in word_category_allowed):
             self.can_influence = True
             return 1
         elif(self.r < min_r):
@@ -177,7 +179,7 @@ class wordEmotionDictionary:
     def learn(self, data):
         for s in data:
             self.read_sentence(s)
-        self.calc_values
+        self.calc_values()
         self.learn_time += 1
         return 0
     def describe(self):
